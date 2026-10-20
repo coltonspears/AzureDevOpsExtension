@@ -62,7 +62,7 @@ export function registerPullRequestCommands(
       side: 'right',
     });
     // Make sure comment threads are available for the documents about to open.
-    await comments.load(pr).catch(() => undefined);
+    await comments.load(pr, undefined, iterationId).catch(() => undefined);
     const { label } = changeTypeLabel(change.changeType);
     const title = `${path.posix.basename(change.item.path)} (!${pr.pullRequestId} · ${label})`;
     const options: vscode.TextDocumentShowOptions = { preview: true };

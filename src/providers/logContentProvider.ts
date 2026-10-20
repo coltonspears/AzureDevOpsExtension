@@ -40,8 +40,10 @@ export class LogContentProvider implements vscode.TextDocumentContentProvider, v
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(private readonly services: Services) {
+    // Polling stops by itself once the document is gone: the timer only fires for open
+    // documents. Stopping on close would break the live tail, because changing the
+    // document's language (see openLog) closes and reopens it.
     this.disposables.push(
-      vscode.workspace.onDidCloseTextDocument(doc => this.stop(doc.uri)),
       vscode.workspace.onDidChangeConfiguration(e => {
         if (e.affectsConfiguration('azureDevOps.pipelines.showLogTimestamps')) {
           vscode.workspace.textDocuments.filter(d => d.uri.scheme === LOG_SCHEME).forEach(d => this.emitter.fire(d.uri));

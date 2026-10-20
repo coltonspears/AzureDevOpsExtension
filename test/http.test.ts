@@ -17,6 +17,11 @@ describe('redirectRequest', () => {
     expect(next.headers?.Accept).toBe('*/*');
   });
 
+  it('drops credentials when redirected from https to http on the same host', () => {
+    const next = redirectRequest(original, new URL(original.url), new URL('http://dev.azure.com/a'), 302);
+    expect(next.headers?.Authorization).toBeUndefined();
+  });
+
   it('switches to GET for 303 and drops the body', () => {
     const next = redirectRequest({ ...original, method: 'POST', body: '{}' }, new URL(original.url), new URL('https://dev.azure.com/c'), 303);
     expect(next.method).toBe('GET');

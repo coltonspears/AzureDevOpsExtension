@@ -76,9 +76,28 @@ export function fieldValueToString(value: unknown, kind: FieldKind): string {
     return unique && unique !== name ? `${name} <${unique}>` : name;
   }
   if (kind === 'date' && typeof value === 'string') {
-    return value.slice(0, 10);
+    return localDate(value);
   }
   return String(value);
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Date fields are stored as UTC timestamps. Like the Azure DevOps web UI, show the calendar
+ * date in the local time zone and save the local midnight of the chosen date.
+ */
+export function localDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso.slice(0, 10);
+  }
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function localMidnightIso(day: string): string {
+  // Date-time strings without an offset are parsed as local time.
+  return new Date(`${day}T00:00:00`).toISOString();
 }
 
 function kindFor(refName: string, definition: WorkItemField | undefined, typeField: WorkItemTypeField): FieldKind {
@@ -196,7 +215,7 @@ export function buildPatch(
     } else if (type === 'boolean') {
       value = raw.toLowerCase() === 'true';
     } else if (type === 'dateTime' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      value = `${raw}T00:00:00Z`;
+      value = localMidnightIso(raw);
     }
     if (typeof value === 'number' && Number.isNaN(value)) {
       throw new Error(`"${raw}" is not a valid number for ${definitions.get(ref)?.name ?? ref}`);

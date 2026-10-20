@@ -69,6 +69,14 @@ export class AccessManager implements vscode.Disposable {
     this.load(undefined);
   }
 
+  /** Clears everything known for the current organization, e.g. after the PAT was replaced. */
+  async reset(): Promise<void> {
+    this.statuses.clear();
+    this.checkedAt = undefined;
+    this.checkedProject = undefined;
+    this.changed(true);
+  }
+
   setChecking(checking: boolean): void {
     this.checking = checking;
     this.emitter.fire();
@@ -77,7 +85,9 @@ export class AccessManager implements vscode.Disposable {
   applyProbeResults(results: ProbeResult[], project: string | undefined): void {
     for (const result of results) {
       const previous = this.statuses.get(result.scope);
-      // Keep knowledge learned at runtime when a probe could not decide.
+      // Keep what is already known about this token when a probe could not decide
+      // (timeouts, server errors, no project selected). Knowledge about a previous
+      // token is cleared by reset() when the PAT changes.
       if (result.state === 'unknown' && previous && previous.state !== 'unknown') {
         continue;
       }

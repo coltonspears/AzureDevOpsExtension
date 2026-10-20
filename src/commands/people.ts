@@ -43,8 +43,11 @@ export function searchPeopleQuickPick(
       const text = value.trim();
       const freeText: PersonItem[] =
         options.allowFreeText && text.includes('@') ? [{ label: `$(mail) Use "${text}"`, freeText: text, alwaysShow: true }] : [];
+      // Once the user types, "Me"/"Unassigned" must not stay pinned on top, or pressing Enter
+      // before search results arrive would pick them instead of what was typed.
+      const shortcuts = fixed.map(item => ({ ...item, alwaysShow: !text }));
+      pick.items = [...freeText, ...shortcuts];
       if (searchDenied || text.length < 2) {
-        pick.items = [...freeText, ...fixed];
         return;
       }
       const current = ++generation;
@@ -65,11 +68,11 @@ export function searchPeopleQuickPick(
                 alwaysShow: true,
               })),
             ...freeText,
-            ...fixed,
+            ...shortcuts,
           ];
         } catch (error) {
           log.warn(`People search failed: ${String(error)}`);
-          pick.items = [...freeText, ...fixed];
+          pick.items = [...freeText, ...shortcuts];
           if (services.access.isDenied('vso.identity')) {
             pick.placeholder = `Type an email address (searching needs the "${scopeLabel('vso.identity')}" scope)`;
           }

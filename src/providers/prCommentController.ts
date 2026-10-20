@@ -74,8 +74,8 @@ interface ReviewThread {
 interface ReviewSession {
   pr: GitPullRequest;
   threads: PullRequestThread[];
-  /** VS Code thread objects per document uri. */
-  rendered: Map<string, vscode.CommentThread[]>;
+  /** VS Code thread objects per document uri, keyed by Azure DevOps thread id. */
+  rendered: Map<string, Map<number, vscode.CommentThread>>;
 }
 
 /**
@@ -109,7 +109,7 @@ export class PullRequestCommentController implements vscode.Disposable {
     this.disposables.push(
       this.controller,
       this.changedEmitter,
-      vscode.workspace.onDidOpenTextDocument(doc => void this.renderDocument(doc.uri)),
+      vscode.workspace.onDidOpenTextDocument(doc => this.renderDocument(doc.uri)),
       vscode.commands.registerCommand('azureDevOps.prComments.createThread', (reply: vscode.CommentReply) => this.createThread(reply)),
       vscode.commands.registerCommand('azureDevOps.prComments.reply', (reply: vscode.CommentReply) => this.reply(reply)),
       vscode.commands.registerCommand('azureDevOps.prComments.resolve', (thread: vscode.CommentThread) => this.setStatus(thread, 'fixed')),
@@ -127,19 +127,28 @@ export class PullRequestCommentController implements vscode.Disposable {
     this.disposables.forEach(d => d.dispose());
   }
 
-  /** Loads (or reloads) the threads of a pull request and re-renders open diff documents. */
-  async load(pr: GitPullRequest, threads?: PullRequestThread[]): Promise<void> {
-    const { api } = this.services.connections.require();
-    const loaded = threads ?? (await api.git.getThreads(pr));
-    const existing = this.sessions.get(pr.pullRequestId);
-    existing?.rendered.forEach(list => list.forEach(t => t.dispose()));
-    this.sessions.set(pr.pullRequestId, { pr, threads: loaded, rendered: new Map() });
+  /**
+   * Loads (or reloads) the threads of a pull request and re-renders open diff documents.
+   * Existing VS Code threads are updated in place so collapse state, reply drafts and
+   * comments being edited survive a refresh.
+   */
+  async load(pr: GitPullRequest, threads?: PullRequestThread[], iterationId?: number): Promise<void> {
+    let loaded = threads;
+    if (!loaded) {
+      const { api } = this.services.connections.require();
+      const iteration = iterationId ?? (await api.git.getIterations(pr)).pop()?.id;
+      loaded = await api.git.getThreads(pr, iteration);
+    }
+    const session = this.sessions.get(pr.pullRequestId) ?? { pr, threads: loaded, rendered: new Map() };
+    session.pr = pr;
+    session.threads = loaded;
+    this.sessions.set(pr.pullRequestId, session);
     for (const document of vscode.workspace.textDocuments) {
-      await this.renderDocument(document.uri);
+      this.renderDocument(document.uri);
     }
   }
 
-  private async renderDocument(uri: vscode.Uri): Promise<void> {
+  private renderDocument(uri: vscode.Uri): void {
     if (uri.scheme !== GIT_SCHEME) {
       return;
     }
@@ -152,15 +161,22 @@ export class PullRequestCommentController implements vscode.Disposable {
       return;
     }
     const key = uri.toString();
-    session.rendered.get(key)?.forEach(t => t.dispose());
-    const rendered: vscode.CommentThread[] = [];
+    const previous = session.rendered.get(key) ?? new Map<number, vscode.CommentThread>();
+    const next = new Map<number, vscode.CommentThread>();
     for (const thread of session.threads) {
       const range = this.rangeFor(thread, query);
-      if (range) {
-        rendered.push(this.renderThread(session.pr, thread, uri, range));
+      if (!range) {
+        continue;
+      }
+      const existing = previous.get(thread.id);
+      next.set(thread.id, existing ? this.updateThread(existing, session.pr, thread, range) : this.renderThread(session.pr, thread, uri, range));
+    }
+    for (const [id, stale] of previous) {
+      if (!next.has(id)) {
+        stale.dispose();
       }
     }
-    session.rendered.set(key, rendered);
+    session.rendered.set(key, next);
   }
 
   private rangeFor(thread: PullRequestThread, query: GitFileQuery): vscode.Range | undefined {
@@ -186,25 +202,50 @@ export class PullRequestCommentController implements vscode.Disposable {
   }
 
   private renderThread(pr: GitPullRequest, thread: PullRequestThread, uri: vscode.Uri, range: vscode.Range): vscode.CommentThread {
-    const userId = this.services.connections.connection?.user.id ?? '';
     const vscodeThread = this.controller.createCommentThread(uri, range, []);
     const info: ReviewThread = { pr, threadId: thread.id, vscodeThread };
     this.threadInfo.set(vscodeThread, info);
-    vscodeThread.comments = thread.comments
-      .filter(c => !c.isDeleted && c.commentType !== 'system')
-      .map(c => new ReviewComment(c, info, userId));
+    vscodeThread.comments = this.commentsFor(thread, info);
     this.applyStatus(vscodeThread, thread.status);
     return vscodeThread;
   }
 
+  private updateThread(
+    vscodeThread: vscode.CommentThread,
+    pr: GitPullRequest,
+    thread: PullRequestThread,
+    range: vscode.Range,
+  ): vscode.CommentThread {
+    const info = this.threadInfo.get(vscodeThread);
+    if (info) {
+      info.pr = pr;
+    }
+    // Leave a thread alone while one of its comments is being edited.
+    if (info && !vscodeThread.comments.some(c => c.mode === vscode.CommentMode.Editing)) {
+      vscodeThread.range = range;
+      vscodeThread.comments = this.commentsFor(thread, info);
+    }
+    this.applyStatus(vscodeThread, thread.status);
+    return vscodeThread;
+  }
+
+  private commentsFor(thread: PullRequestThread, info: ReviewThread): ReviewComment[] {
+    const userId = this.services.connections.connection?.user.id ?? '';
+    return thread.comments.filter(c => !c.isDeleted && c.commentType !== 'system').map(c => new ReviewComment(c, info, userId));
+  }
+
   private applyStatus(vscodeThread: vscode.CommentThread, status: PullRequestThread['status']): void {
     const resolved = isResolved(status);
+    const contextValue = resolved ? 'resolved' : 'active';
     vscodeThread.label = statusLabel(status);
-    vscodeThread.contextValue = resolved ? 'resolved' : 'active';
     vscodeThread.canReply = true;
-    vscodeThread.collapsibleState = resolved
-      ? vscode.CommentThreadCollapsibleState.Collapsed
-      : vscode.CommentThreadCollapsibleState.Expanded;
+    // Only change the collapse state when the status changes, so refreshes keep the user's choice.
+    if (vscodeThread.contextValue !== contextValue) {
+      vscodeThread.collapsibleState = resolved
+        ? vscode.CommentThreadCollapsibleState.Collapsed
+        : vscode.CommentThreadCollapsibleState.Expanded;
+    }
+    vscodeThread.contextValue = contextValue;
     if ('state' in vscodeThread) {
       vscodeThread.state = resolved ? vscode.CommentThreadState.Resolved : vscode.CommentThreadState.Unresolved;
     }
@@ -247,7 +288,7 @@ export class PullRequestCommentController implements vscode.Disposable {
       const uri = vscodeThread.uri;
       vscodeThread.dispose();
       session.threads.push(created);
-      await this.renderDocument(uri);
+      this.renderDocument(uri);
       this.changedEmitter.fire(session.pr.pullRequestId);
     } catch (error) {
       await reportError(error, 'add the comment', this.services.access);

@@ -85,9 +85,10 @@ export class PullRequestPanel extends WebviewPanelBase<PullRequestToHost, PullRe
     this.push();
     try {
       const pr = await api.git.getPullRequest(this.id);
+      const iterationsLoad = api.git.getIterations(pr);
       const [threads, iterations, workItemRefs, commits, evaluations, statuses] = await Promise.all([
-        api.git.getThreads(pr),
-        api.git.getIterations(pr),
+        iterationsLoad.then(list => api.git.getThreads(pr, list[list.length - 1]?.id)),
+        iterationsLoad,
         api.git.getWorkItemRefs(pr).catch(() => []),
         api.git.getCommits(pr).catch(() => []),
         api.git.getPolicyEvaluations(pr).catch(() => []),
@@ -333,7 +334,7 @@ export class PullRequestPanel extends WebviewPanelBase<PullRequestToHost, PullRe
       case 'reply':
         if (message.text.trim() && (await write('reply to comments'))) {
           await mutate('Reply', async () => {
-            const thread = (await api.git.getThreads(pr)).find(t => t.id === message.threadId);
+            const thread = (await api.git.getThreads(pr, this.iterationId)).find(t => t.id === message.threadId);
             await api.git.reply(pr, message.threadId, message.text, thread?.comments[0]?.id ?? 1);
             this.post({ type: 'commentPosted' });
           });

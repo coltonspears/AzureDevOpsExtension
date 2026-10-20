@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WorkItem, WorkItemField, WorkItemTypeField } from '../src/api/types';
-import { buildFieldModels, buildPatch, describeRelations } from '../src/webviews/workItemFields';
+import { buildFieldModels, buildPatch, describeRelations, localDate, localMidnightIso } from '../src/webviews/workItemFields';
 import { policyChecks, statusChecks } from '../src/webviews/checks';
 import { wiqlResultIds } from '../src/api/workItems';
 import { workItemMarkdown } from '../src/util/workItemMarkdown';
@@ -105,7 +105,7 @@ describe('buildPatch', () => {
     expect(patch[0]).toEqual({ op: 'test', path: '/rev', value: 3 });
     expect(patch).toContainEqual({ op: 'add', path: '/fields/Microsoft.VSTS.Common.Priority', value: 1 });
     expect(patch).toContainEqual({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.StoryPoints', value: 2.5 });
-    expect(patch).toContainEqual({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.TargetDate', value: '2026-12-24T00:00:00Z' });
+    expect(patch).toContainEqual({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.TargetDate', value: '2026-12-24T00:00:00.000Z' });
     expect(patch).toContainEqual({ op: 'add', path: '/fields/System.Title', value: 'New title' });
   });
 
@@ -119,6 +119,23 @@ describe('buildPatch', () => {
 
   it('rejects invalid numbers', () => {
     expect(() => buildPatch(item, { 'Microsoft.VSTS.Common.Priority': 'high' }, definitions)).toThrow(/not a valid number/);
+  });
+});
+
+describe('date fields', () => {
+  it('shows and saves local calendar dates', () => {
+    const original = process.env.TZ;
+    try {
+      process.env.TZ = 'America/Los_Angeles';
+      // 2026-11-01T00:00Z is still October 31st in Los Angeles.
+      expect(localDate('2026-11-01T00:00:00Z')).toBe('2026-10-31');
+      expect(localMidnightIso('2026-12-24')).toBe('2026-12-24T08:00:00.000Z');
+      process.env.TZ = 'Asia/Tokyo';
+      expect(localDate('2026-11-01T20:00:00Z')).toBe('2026-11-02');
+      expect(localMidnightIso('2026-12-24')).toBe('2026-12-23T15:00:00.000Z');
+    } finally {
+      process.env.TZ = original;
+    }
   });
 });
 

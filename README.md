@@ -89,7 +89,7 @@ check (`2xx`, `400`, `404`, …) means it is granted.
 | Pick projects and teams from a list | Project and Team — **Read** |
 | Search people (assignees, reviewers) | Identity — **Read** |
 
-The access page also reports Graph, User Profile, Wiki, Test Management, Packaging, Variable Groups,
+The access page also reports Graph, Wiki, Test Management, Packaging, Variable Groups,
 Agent Pools and Service Connections, so you can see the full shape of a token at a glance.
 Project-level scopes (Build, Release, Wiki, …) are checked once a project is selected.
 
@@ -108,7 +108,7 @@ also works, and is reported as such.
 
 ### Security
 - The PAT lives in the OS keychain (Secret Storage), is never logged, and is only sent to your organization's
-  own hosts. Redirects to other hosts drop the `Authorization` header; authenticated image loading refuses
+  own hosts (scope checks included). Redirects to another host or from HTTPS to HTTP drop the `Authorization` header; authenticated image loading refuses
   URLs outside the organization.
 - Content from Azure DevOps (descriptions, comments, Markdown) is sanitized before display, and webviews run
   with a strict Content Security Policy.
@@ -147,8 +147,8 @@ All commands are in the Command Palette under **Azure DevOps:**. Highlights:
 ## Azure DevOps Server
 
 Enter the collection URL (for example `https://tfs.contoso.com/tfs/DefaultCollection`). Everything runs against
-that host; set `azureDevOps.server.apiVersion` to match your server. User Profile and Graph scopes are cloud-only
-and show as *not verified* on Server.
+that host; set `azureDevOps.server.apiVersion` to match your server. The Graph scope is cloud-only and shows as
+*not verified* on Server.
 
 ## Development
 

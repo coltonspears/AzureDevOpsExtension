@@ -68,6 +68,8 @@ describe('branches and references', () => {
     expect(findWorkItemReferences('feature/1234-fix-login')).toEqual([1234]);
     expect(findWorkItemReferences('Fixes AB#55 and #66')).toEqual([55, 66]);
     expect(findWorkItemReferences('release/v2')).toEqual([]);
+    expect(findWorkItemReferences('release/2024-hotfix')).toEqual([]);
+    expect(findWorkItemReferences('hotfix/2026_10')).toEqual([]);
   });
 
   it('suggests a title from the branch name', () => {

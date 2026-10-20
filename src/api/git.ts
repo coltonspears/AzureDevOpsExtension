@@ -184,9 +184,14 @@ export class GitApi {
     });
   }
 
-  async getThreads(pr: GitPullRequest): Promise<PullRequestThread[]> {
+  /**
+   * Comment threads. With `iterationId`, file positions are tracked to that iteration
+   * (compared to the target branch) instead of the iteration each comment was made on.
+   */
+  async getThreads(pr: GitPullRequest, iterationId?: number): Promise<PullRequestThread[]> {
     const result = await this.client.json<ListResponse<PullRequestThread>>({
       path: `${this.prPath(pr)}/threads`,
+      query: iterationId !== undefined ? { $iteration: iterationId, $baseIteration: 0 } : undefined,
       scope: 'vso.code',
     });
     return result.value.filter(t => !t.isDeleted);

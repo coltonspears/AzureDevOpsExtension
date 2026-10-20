@@ -146,9 +146,15 @@ export function findWorkItemReferences(text: string): number[] {
   for (const match of text.matchAll(/(?:AB)?#(\d{1,9})\b/gi)) {
     ids.add(Number(match[1]));
   }
-  // Branch names such as feature/1234-fix-login or users/me/1234_thing.
-  for (const match of text.matchAll(/(?:^|\/)(\d{2,9})(?=[-_]|$)/g)) {
-    ids.add(Number(match[1]));
+  // Branch names such as feature/1234-fix-login or users/me/1234_thing. Release-style
+  // branches (release/2024-hotfix) carry versions or dates, not work item ids.
+  for (const line of text.split('\n')) {
+    if (/^(release|releases|hotfix|support|v\d)/i.test(line.trim())) {
+      continue;
+    }
+    for (const match of line.matchAll(/(?:^|\/)(\d{2,9})(?=[-_]|$)/g)) {
+      ids.add(Number(match[1]));
+    }
   }
   return [...ids];
 }

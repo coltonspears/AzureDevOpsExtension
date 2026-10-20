@@ -87,7 +87,7 @@ describe('probeScopes', () => {
 
   it('skips cloud-only probes on Azure DevOps Server', async () => {
     const results = await probeScopes({ ...context, organization: server }, async () => ({ status: 200 }));
-    expect(results.find(r => r.scope === 'vso.profile')?.state).toBe('unknown');
+    expect(results.find(r => r.scope === 'vso.graph')?.state).toBe('unknown');
     expect(results.find(r => r.scope === 'vso.work')?.state).toBe('granted');
   });
 

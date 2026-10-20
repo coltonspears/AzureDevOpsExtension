@@ -135,14 +135,6 @@ export const PROBES: readonly ScopeProbe[] = [
     }),
   },
   {
-    scope: 'vso.profile',
-    cloudOnly: true,
-    build: ctx => ({
-      method: 'GET',
-      url: `${serviceUrl(ctx.organization, 'profile')}/_apis/profile/profiles/me?api-version=${version(ctx, true)}`,
-    }),
-  },
-  {
     scope: 'vso.wiki',
     requiresProject: true,
     build: ctx => ({ method: 'GET', url: project(ctx, '_apis/wiki/wikis') }),

@@ -19,7 +19,6 @@ export type ScopeId =
   | 'vso.packaging'
   | 'vso.identity'
   | 'vso.graph'
-  | 'vso.profile'
   | 'vso.variablegroups_read'
   | 'vso.agentpools'
   | 'vso.serviceendpoint';
@@ -73,7 +72,6 @@ export const SCOPES: readonly ScopeDefinition[] = [
   { id: 'vso.project', area: 'Project and Team', level: 'Read', description: 'List projects, teams and their settings.' },
   { id: 'vso.identity', area: 'Identity', level: 'Read', description: 'Search for people to assign or add as reviewers.' },
   { id: 'vso.graph', area: 'Graph', level: 'Read', description: 'Read users and groups.' },
-  { id: 'vso.profile', area: 'User Profile', level: 'Read', description: 'Read your profile (cloud only).' },
   { id: 'vso.wiki', area: 'Wiki', level: 'Read', description: 'Read wikis and wiki pages.' },
   {
     id: 'vso.wiki_write',
@@ -260,7 +258,7 @@ export function summarizeFeatures(states: ReadonlyMap<ScopeId, AccessState>): Ac
     denied: values.filter(v => v === 'denied').length,
     unknown: values.filter(v => v === 'unknown').length,
     total: values.length,
-    fullAccess: SCOPES.every(s => states.get(s.id) === 'granted' || (s.id === 'vso.profile' && states.get(s.id) === 'unknown')),
+    fullAccess: SCOPES.every(s => states.get(s.id) === 'granted'),
   };
 }
 

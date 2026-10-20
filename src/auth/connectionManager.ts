@@ -340,12 +340,12 @@ export class ConnectionManager implements vscode.Disposable {
    * Probes every scope again. Interactive runs show progress and a summary. Runs are
    * serialized, and a request for the same token and project joins the run in flight.
    */
-  async recheckAccess(options: { interactive: boolean }): Promise<void> {
+  async recheckAccess(options: { interactive: boolean; previous?: ReadonlyMap<ScopeId, AccessState> }): Promise<void> {
     const connection = this.current;
     if (!connection) {
       return;
     }
-    const before = new Map(this.access.states());
+    const before = options.previous ?? new Map(this.access.states());
     const project = this.currentProject;
     let pending = this.pendingProbe;
     if (!pending || pending.client !== connection.api.client || pending.project !== project) {
@@ -413,7 +413,8 @@ export class ConnectionManager implements vscode.Disposable {
     } else {
       parts.push(`${summary.granted} of ${summary.total} features are available with this PAT.`);
     }
-    if (gained.length && before.size) {
+    const knewBefore = [...before.values()].some(state => state !== 'unknown');
+    if (gained.length && knewBefore) {
       parts.push(`Newly granted: ${gained.map(scopeLabel).join(', ')}.`);
     }
     if (lost.length) {
@@ -523,6 +524,7 @@ export class ConnectionManager implements vscode.Disposable {
       return false;
     }
 
+    const tokenChanged = (await this.context.secrets.get(secretKey(organization))) !== pat;
     await this.context.secrets.store(secretKey(organization), pat);
     await this.saveOrganization(organization, user);
     await this.context.globalState.update(ACTIVE_KEY, { url: organization.url, name: organization.name, kind: organization.kind, user });
@@ -530,14 +532,23 @@ export class ConnectionManager implements vscode.Disposable {
     const switchedOrg = !this.current || !sameOrganization(this.current.organization, organization);
     this.current = { organization, user, api };
     if (switchedOrg) {
+      // The previous organization's project and team mean nothing here.
+      this.currentProject = undefined;
+      this.currentTeam = undefined;
       this.access.load(organizationKey(organization));
+    }
+    // Remember what the old token could do (to report what changed), then forget it:
+    // nothing learned about a different token applies to this one.
+    const previous = tokenChanged ? new Map(this.access.states()) : undefined;
+    if (tokenChanged) {
+      await this.access.reset();
     }
     await this.resolveProject(interactive);
     await this.updateContext();
     this.emitter.fire();
     log.info(`Signed in to ${organization.url} as ${user.displayName}`);
 
-    await this.recheckAccess({ interactive });
+    await this.recheckAccess({ interactive, previous });
     if (interactive) {
       await vscode.commands.executeCommand('azureDevOps.showAccess', { afterSignIn: true });
     }

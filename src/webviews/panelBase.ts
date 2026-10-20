@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
+import { organizationKey } from '../api/urls';
 import { ScopeId, SCOPES } from '../auth/scopes';
 import { Services } from '../services';
 import { CommonToHost, CommonToWebview } from '../shared/messages';
@@ -21,11 +22,16 @@ export abstract class WebviewPanelBase<ToHost extends { type: string }, ToWebvie
   readonly onDidDispose = this.disposeEmitter.event;
   private isDisposed = false;
 
+  /**
+   * @param bindToOrganization close the panel when the user switches organization or signs
+   * out, so it can never act on another organization's item with the same id.
+   */
   constructor(
     protected readonly services: Services,
     viewType: string,
     title: string,
     private readonly script: string,
+    bindToOrganization = true,
   ) {
     const extensionUri = services.context.extensionUri;
     this.panel = vscode.window.createWebviewPanel(
@@ -44,6 +50,18 @@ export abstract class WebviewPanelBase<ToHost extends { type: string }, ToWebvie
       this.panel.onDidDispose(() => this.dispose()),
       this.panel.webview.onDidReceiveMessage((message: ToHost | CommonToHost) => void this.dispatch(message)),
     );
+    const connection = services.connections.connection;
+    if (bindToOrganization && connection) {
+      const key = organizationKey(connection.organization);
+      this.disposables.push(
+        services.connections.onDidChange(() => {
+          const current = services.connections.connection;
+          if (!current || organizationKey(current.organization) !== key) {
+            this.dispose();
+          }
+        }),
+      );
+    }
   }
 
   get disposed(): boolean {

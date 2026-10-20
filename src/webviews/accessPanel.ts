@@ -23,7 +23,8 @@ export class AccessPanel extends WebviewPanelBase<AccessToHost, AccessToWebview>
   }
 
   private constructor(services: Services) {
-    super(services, 'azureDevOps.access', 'Azure DevOps: PAT Access', 'access');
+    // Not bound to an organization: it follows the current connection (and shows sign-in when there is none).
+    super(services, 'azureDevOps.access', 'Azure DevOps: PAT Access', 'access', false);
     this.track(services.access.onDidChange(() => this.pushState()));
     this.track(services.connections.onDidChange(() => this.pushState()));
   }

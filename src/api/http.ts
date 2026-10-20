@@ -74,11 +74,12 @@ function send(request: HttpRequest, redirects: number): Promise<HttpResponse> {
   });
 }
 
-/** Builds the follow-up request for a redirect, never forwarding credentials to another host. */
+/** Builds the follow-up request for a redirect, never forwarding credentials to another origin. */
 export function redirectRequest(original: HttpRequest, from: URL, to: URL, status: number): HttpRequest {
   const headers: Record<string, string> = {};
+  const sameOrigin = to.host.toLowerCase() === from.host.toLowerCase() && to.protocol === from.protocol;
   for (const [key, value] of Object.entries(original.headers ?? {})) {
-    if (key.toLowerCase() === 'authorization' && to.host.toLowerCase() !== from.host.toLowerCase()) {
+    if (key.toLowerCase() === 'authorization' && !sameOrigin) {
       continue;
     }
     headers[key] = value;

@@ -38,8 +38,14 @@ function original(ref: string): string {
   return item.fields.find(f => f.refName === ref)?.value ?? item.richFields.find(f => f.refName === ref)?.html ?? '';
 }
 
+/**
+ * Rich fields are compared with their sanitized form, so focusing or typing and undoing
+ * in an editor does not count as a change.
+ */
+const richBaselines: Record<string, string> = {};
+
 function setDraft(ref: string, value: string): void {
-  if (value === original(ref)) {
+  if (value === (richBaselines[ref] ?? original(ref))) {
     delete drafts[ref];
   } else {
     drafts[ref] = value;
@@ -129,12 +135,21 @@ function fieldInput(field: FieldModel): HTMLElement {
 /** Copies the editor's HTML, restoring original URLs of images that were inlined for display. */
 function editorHtml(editor: HTMLElement): string {
   const clone = editor.cloneNode(true) as HTMLElement;
-  clone.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img => {
-    img.setAttribute('src', img.dataset.src!);
-    img.removeAttribute('data-src');
+  clone.querySelectorAll<HTMLImageElement>('img').forEach(img => {
+    if (img.dataset.src) {
+      img.setAttribute('src', img.dataset.src);
+      img.removeAttribute('data-src');
+    }
+    img.classList.remove('broken');
+    if (!img.getAttribute('class')) {
+      img.removeAttribute('class');
+    }
   });
   return clone.innerHTML;
 }
+
+/** Content the editor cannot round-trip (it is removed by the sanitizer). */
+const UNEDITABLE = /<(input|iframe|object|embed|svg|form|button|select|textarea)\b/i;
 
 function richField(field: { refName: string; name: string }): HTMLElement {
   const editable = !readOnly();
@@ -144,7 +159,11 @@ function richField(field: { refName: string; name: string }): HTMLElement {
     'data-key': `rich:${field.refName}`,
     oninput: () => setDraft(field.refName, editorHtml(editor)),
   });
+  const baseline = h('div');
+  baseline.innerHTML = sanitizeHtml(original(field.refName));
+  richBaselines[field.refName] = editorHtml(baseline);
   editor.innerHTML = sanitizeHtml(current(field.refName));
+  const lossy = editable && UNEDITABLE.test(original(field.refName));
   const command = (name: string, value?: string) => () => {
     editor.focus();
     document.execCommand(name, false, value);
@@ -162,7 +181,19 @@ function richField(field: { refName: string; name: string }): HTMLElement {
         h('button', { title: 'Clear formatting', onclick: command('removeFormat') }, icon('clear-all')),
       )
     : null;
-  return section(h('span', null, field.name, field.refName in drafts ? ' •' : ''), toolbar, editor);
+  return section(
+    h('span', null, field.name, field.refName in drafts ? ' •' : ''),
+    lossy
+      ? h(
+          'div',
+          { class: 'warn-banner' },
+          icon('warning', 'warn'),
+          'This field contains content the editor cannot keep (such as checklists or embedded controls). Editing it here will remove that content — use Open in Browser to keep it.',
+        )
+      : null,
+    toolbar,
+    editor,
+  );
 }
 
 const RELATION_GROUPS: { kind: RelationModel['kind']; title: string }[] = [

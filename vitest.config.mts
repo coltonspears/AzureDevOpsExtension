@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     environment: 'node',
+    // Date handling is tested in explicit time zones; default to a fixed one.
+    env: { TZ: 'UTC' },
   },
 });

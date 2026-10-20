@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Azure Pipelines Log",
+  "scopeName": "text.log.azure-pipelines",
+  "patterns": [
+    { "include": "#timestamp" },
+    { "include": "#error" },
+    { "include": "#warning" },
+    { "include": "#section" },
+    { "include": "#command" },
+    { "include": "#group" },
+    { "include": "#debug" },
+    { "include": "#vso" }
+  ],
+  "repository": {
+    "timestamp": {
+      "match": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z",
+      "name": "comment.line.timestamp.azure-pipelines"
+    },
+    "error": {
+      "match": "##\\[error\\].*$",
+      "name": "invalid.illegal.error.azure-pipelines"
+    },
+    "warning": {
+      "match": "##\\[warning\\].*$",
+      "name": "markup.changed.warning.azure-pipelines"
+    },
+    "section": {
+      "match": "##\\[section\\].*$",
+      "name": "markup.heading.section.azure-pipelines entity.name.section"
+    },
+    "command": {
+      "match": "##\\[command\\].*$",
+      "name": "string.unquoted.command.azure-pipelines"
+    },
+    "group": {
+      "match": "##\\[(group|endgroup)\\].*$",
+      "name": "keyword.control.group.azure-pipelines"
+    },
+    "debug": {
+      "match": "##\\[debug\\].*$",
+      "name": "comment.line.debug.azure-pipelines"
+    },
+    "vso": {
+      "match": "##vso\\[[^\\]]*\\].*$",
+      "name": "support.function.logging-command.azure-pipelines"
+    }
+  }
+}

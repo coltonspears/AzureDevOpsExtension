@@ -1,0 +1,1123 @@
+{
+  "name": "azure-devops-for-cursor",
+  "displayName": "Azure DevOps for Cursor",
+  "description": "Work items, pull request reviews, pipelines and live logs from Azure DevOps — signed in with a PAT whose scopes are verified and shown up front.",
+  "version": "0.1.0",
+  "publisher": "coltonspears",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coltonspears/AzureDevOpsExtension"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "azure devops",
+    "ado",
+    "work items",
+    "pull requests",
+    "pipelines",
+    "boards",
+    "repos",
+    "pat",
+    "cursor"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "azureDevOps",
+          "title": "Azure DevOps",
+          "icon": "resources/azure-devops.svg"
+        }
+      ]
+    },
+    "views": {
+      "azureDevOps": [
+        {
+          "id": "azureDevOps.account",
+          "name": "Account & Access",
+          "icon": "resources/azure-devops.svg"
+        },
+        {
+          "id": "azureDevOps.workItems",
+          "name": "Work Items"
+        },
+        {
+          "id": "azureDevOps.pullRequests",
+          "name": "Pull Requests"
+        },
+        {
+          "id": "azureDevOps.pipelines",
+          "name": "Pipelines"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "azureDevOps.account",
+        "when": "!azureDevOps.signedIn",
+        "contents": "Connect to Azure DevOps with a Personal Access Token (PAT) to work with Boards, Repos and Pipelines without leaving the editor.\n[Sign In with PAT](command:azureDevOps.signIn)\nAfter you sign in, the extension verifies which scopes your token grants and shows exactly which features are available. The token is stored in your operating system's keychain.\n[How to create a PAT](https://learn.microsoft.com/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate)"
+      },
+      {
+        "view": "azureDevOps.workItems",
+        "when": "!azureDevOps.signedIn",
+        "contents": "Sign in to see the work items assigned to you, your sprint, and saved queries.\n[Sign In](command:azureDevOps.signIn)"
+      },
+      {
+        "view": "azureDevOps.pullRequests",
+        "when": "!azureDevOps.signedIn",
+        "contents": "Sign in to review and create pull requests.\n[Sign In](command:azureDevOps.signIn)"
+      },
+      {
+        "view": "azureDevOps.pipelines",
+        "when": "!azureDevOps.signedIn",
+        "contents": "Sign in to watch pipeline runs and read their logs.\n[Sign In](command:azureDevOps.signIn)"
+      },
+      {
+        "view": "azureDevOps.workItems",
+        "when": "azureDevOps.signedIn && !azureDevOps.hasProject",
+        "contents": "Choose the project to work in.\n[Select Project](command:azureDevOps.selectProject)"
+      },
+      {
+        "view": "azureDevOps.pullRequests",
+        "when": "azureDevOps.signedIn && !azureDevOps.hasProject",
+        "contents": "Choose the project to work in.\n[Select Project](command:azureDevOps.selectProject)"
+      },
+      {
+        "view": "azureDevOps.pipelines",
+        "when": "azureDevOps.signedIn && !azureDevOps.hasProject",
+        "contents": "Choose the project to work in.\n[Select Project](command:azureDevOps.selectProject)"
+      },
+      {
+        "view": "azureDevOps.workItems",
+        "when": "azureDevOps.signedIn && azureDevOps.hasProject && azureDevOps.denied.vso_work",
+        "contents": "🔒 Work items are locked.\n\nYour Personal Access Token doesn't include the **Work Items (Read)** scope.\n[Edit PAT Scopes](command:azureDevOps.openTokenSettings)\n[Re-check Access](command:azureDevOps.recheckAccess)\nEdited the scopes of your existing token? Just re-check — the token value stays the same. You can also [use a different token](command:azureDevOps.updatePat) or [see everything your token can do](command:azureDevOps.showAccess)."
+      },
+      {
+        "view": "azureDevOps.pullRequests",
+        "when": "azureDevOps.signedIn && azureDevOps.hasProject && azureDevOps.denied.vso_code",
+        "contents": "🔒 Pull requests are locked.\n\nYour Personal Access Token doesn't include the **Code (Read)** scope.\n[Edit PAT Scopes](command:azureDevOps.openTokenSettings)\n[Re-check Access](command:azureDevOps.recheckAccess)\nEdited the scopes of your existing token? Just re-check — the token value stays the same. You can also [use a different token](command:azureDevOps.updatePat) or [see everything your token can do](command:azureDevOps.showAccess)."
+      },
+      {
+        "view": "azureDevOps.pipelines",
+        "when": "azureDevOps.signedIn && azureDevOps.hasProject && azureDevOps.denied.vso_build",
+        "contents": "🔒 Pipelines are locked.\n\nYour Personal Access Token doesn't include the **Build (Read)** scope.\n[Edit PAT Scopes](command:azureDevOps.openTokenSettings)\n[Re-check Access](command:azureDevOps.recheckAccess)\nEdited the scopes of your existing token? Just re-check — the token value stays the same. You can also [use a different token](command:azureDevOps.updatePat) or [see everything your token can do](command:azureDevOps.showAccess)."
+      }
+    ],
+    "commands": [
+      {
+        "command": "azureDevOps.signIn",
+        "title": "Sign In with Personal Access Token",
+        "category": "Azure DevOps",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "azureDevOps.updatePat",
+        "title": "Update Personal Access Token",
+        "category": "Azure DevOps",
+        "icon": "$(key)"
+      },
+      {
+        "command": "azureDevOps.signOut",
+        "title": "Sign Out",
+        "category": "Azure DevOps",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "azureDevOps.switchOrganization",
+        "title": "Switch Organization",
+        "category": "Azure DevOps",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "azureDevOps.selectProject",
+        "title": "Select Project",
+        "category": "Azure DevOps",
+        "icon": "$(project)"
+      },
+      {
+        "command": "azureDevOps.selectTeam",
+        "title": "Select Team",
+        "category": "Azure DevOps",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "azureDevOps.showAccess",
+        "title": "Show PAT Access & Scopes",
+        "category": "Azure DevOps",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "azureDevOps.recheckAccess",
+        "title": "Re-check PAT Scopes",
+        "category": "Azure DevOps",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "azureDevOps.openTokenSettings",
+        "title": "Manage Personal Access Tokens (Browser)",
+        "category": "Azure DevOps",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "azureDevOps.explainScope",
+        "title": "Explain Missing Scope",
+        "category": "Azure DevOps"
+      },
+      {
+        "command": "azureDevOps.explainFeature",
+        "title": "Explain Feature Access",
+        "category": "Azure DevOps"
+      },
+      {
+        "command": "azureDevOps.showLog",
+        "title": "Show Extension Log",
+        "category": "Azure DevOps",
+        "icon": "$(output)"
+      },
+      {
+        "command": "azureDevOps.workItems.createLocked",
+        "title": "Create Work Item (requires Work Items: Read & write)",
+        "category": "Azure DevOps",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.createLocked",
+        "title": "Create Pull Request (requires Code: Read & write)",
+        "category": "Azure DevOps",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "azureDevOps.pipelines.runLocked",
+        "title": "Run Pipeline (requires Build: Read & execute)",
+        "category": "Azure DevOps",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "azureDevOps.workItems.refresh",
+        "title": "Refresh Work Items",
+        "category": "Azure DevOps",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "azureDevOps.workItems.open",
+        "title": "Open Work Item…",
+        "category": "Azure DevOps",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "azureDevOps.workItems.search",
+        "title": "Search Work Items",
+        "category": "Azure DevOps",
+        "icon": "$(search)"
+      },
+      {
+        "command": "azureDevOps.workItems.create",
+        "title": "Create Work Item",
+        "category": "Azure DevOps",
+        "icon": "$(add)"
+      },
+      {
+        "command": "azureDevOps.workItems.createChild",
+        "title": "Create Child Work Item",
+        "category": "Azure DevOps",
+        "icon": "$(add)"
+      },
+      {
+        "command": "azureDevOps.workItems.createFromSelection",
+        "title": "Create Work Item from Selection",
+        "category": "Azure DevOps",
+        "icon": "$(add)"
+      },
+      {
+        "command": "azureDevOps.workItems.openInBrowser",
+        "title": "Open Work Item in Browser",
+        "category": "Azure DevOps",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "azureDevOps.workItems.copyLink",
+        "title": "Copy Work Item Link",
+        "category": "Azure DevOps",
+        "icon": "$(link)"
+      },
+      {
+        "command": "azureDevOps.workItems.copyAsMarkdown",
+        "title": "Copy Work Item as Markdown (AI Context)",
+        "category": "Azure DevOps",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "azureDevOps.workItems.changeState",
+        "title": "Change Work Item State…",
+        "category": "Azure DevOps",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "azureDevOps.workItems.assignToMe",
+        "title": "Assign Work Item to Me",
+        "category": "Azure DevOps",
+        "icon": "$(account)"
+      },
+      {
+        "command": "azureDevOps.workItems.assign",
+        "title": "Assign Work Item To…",
+        "category": "Azure DevOps",
+        "icon": "$(person)"
+      },
+      {
+        "command": "azureDevOps.workItems.addComment",
+        "title": "Comment on Work Item…",
+        "category": "Azure DevOps",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "azureDevOps.workItems.createBranch",
+        "title": "Create Branch for Work Item…",
+        "category": "Azure DevOps",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.refresh",
+        "title": "Refresh Pull Requests",
+        "category": "Azure DevOps",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.create",
+        "title": "Create Pull Request",
+        "category": "Azure DevOps",
+        "icon": "$(git-pull-request-create)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.open",
+        "title": "Open Pull Request…",
+        "category": "Azure DevOps",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.openInBrowser",
+        "title": "Open Pull Request in Browser",
+        "category": "Azure DevOps",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.copyLink",
+        "title": "Copy Pull Request Link",
+        "category": "Azure DevOps",
+        "icon": "$(link)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.vote",
+        "title": "Vote on Pull Request…",
+        "category": "Azure DevOps",
+        "icon": "$(thumbsup)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.approve",
+        "title": "Approve Pull Request",
+        "category": "Azure DevOps",
+        "icon": "$(pass)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.checkout",
+        "title": "Check Out Pull Request Branch",
+        "category": "Azure DevOps",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "azureDevOps.pullRequests.openFileDiff",
+        "title": "Open Pull Request Diff",
+        "category": "Azure DevOps"
+      },
+      {
+        "command": "azureDevOps.pullRequests.openFile",
+        "title": "Open Workspace Copy of File",
+        "category": "Azure DevOps",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "azureDevOps.prComments.createThread",
+        "title": "Add Comment",
+        "category": "Azure DevOps"
+      },
+      {
+        "command": "azureDevOps.prComments.reply",
+        "title": "Reply",
+        "category": "Azure DevOps"
+      },
+      {
+        "command": "azureDevOps.prComments.resolve",
+        "title": "Resolve Thread",
+        "category": "Azure DevOps",
+        "icon": "$(check)"
+      },
+      {
+        "command": "azureDevOps.prComments.reactivate",
+        "title": "Reactivate Thread",
+        "category": "Azure DevOps",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "azureDevOps.prComments.edit",
+        "title": "Edit Comment",
+        "category": "Azure DevOps",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "azureDevOps.prComments.saveEdit",
+        "title": "Save",
+        "category": "Azure DevOps"
+      },
+      {
+        "command": "azureDevOps.prComments.cancelEdit",
+        "title": "Cancel",
+        "category": "Azure DevOps"
+      },
+      {
+        "command": "azureDevOps.prComments.delete",
+        "title": "Delete Comment",
+        "category": "Azure DevOps",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "azureDevOps.pipelines.refresh",
+        "title": "Refresh Pipelines",
+        "category": "Azure DevOps",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "azureDevOps.pipelines.run",
+        "title": "Run Pipeline…",
+        "category": "Azure DevOps",
+        "icon": "$(play)"
+      },
+      {
+        "command": "azureDevOps.pipelines.rerun",
+        "title": "Run Again (Same Branch)",
+        "category": "Azure DevOps",
+        "icon": "$(debug-rerun)"
+      },
+      {
+        "command": "azureDevOps.pipelines.cancel",
+        "title": "Cancel Run",
+        "category": "Azure DevOps",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "azureDevOps.pipelines.retry",
+        "title": "Retry Failed Jobs",
+        "category": "Azure DevOps",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "azureDevOps.pipelines.openInBrowser",
+        "title": "Open in Browser",
+        "category": "Azure DevOps",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "azureDevOps.pipelines.openLog",
+        "title": "Open Log",
+        "category": "Azure DevOps",
+        "icon": "$(output)"
+      },
+      {
+        "command": "azureDevOps.pipelines.approve",
+        "title": "Approve",
+        "category": "Azure DevOps",
+        "icon": "$(check)"
+      },
+      {
+        "command": "azureDevOps.pipelines.reject",
+        "title": "Reject",
+        "category": "Azure DevOps",
+        "icon": "$(close)"
+      },
+      {
+        "command": "azureDevOps.repos.clone",
+        "title": "Clone Repository…",
+        "category": "Azure DevOps",
+        "icon": "$(repo-clone)"
+      },
+      {
+        "command": "azureDevOps.repos.openFileInBrowser",
+        "title": "Open File in Azure Repos",
+        "category": "Azure DevOps",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "azureDevOps.repos.copyFileLink",
+        "title": "Copy Azure Repos Link to Selection",
+        "category": "Azure DevOps",
+        "icon": "$(link)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "azureDevOps.showAccess",
+          "when": "view == azureDevOps.account && azureDevOps.signedIn",
+          "group": "navigation@1"
+        },
+        {
+          "command": "azureDevOps.recheckAccess",
+          "when": "view == azureDevOps.account && azureDevOps.signedIn",
+          "group": "navigation@2"
+        },
+        {
+          "command": "azureDevOps.switchOrganization",
+          "when": "view == azureDevOps.account",
+          "group": "1_org@1"
+        },
+        {
+          "command": "azureDevOps.selectProject",
+          "when": "view == azureDevOps.account && azureDevOps.signedIn",
+          "group": "1_org@2"
+        },
+        {
+          "command": "azureDevOps.selectTeam",
+          "when": "view == azureDevOps.account && azureDevOps.hasProject",
+          "group": "1_org@3"
+        },
+        {
+          "command": "azureDevOps.updatePat",
+          "when": "view == azureDevOps.account && azureDevOps.signedIn",
+          "group": "2_pat@1"
+        },
+        {
+          "command": "azureDevOps.openTokenSettings",
+          "when": "view == azureDevOps.account && azureDevOps.signedIn",
+          "group": "2_pat@2"
+        },
+        {
+          "command": "azureDevOps.signOut",
+          "when": "view == azureDevOps.account && azureDevOps.signedIn",
+          "group": "3_session@1"
+        },
+        {
+          "command": "azureDevOps.showLog",
+          "when": "view == azureDevOps.account",
+          "group": "4_diag@1"
+        },
+        {
+          "command": "azureDevOps.workItems.create",
+          "when": "view == azureDevOps.workItems && azureDevOps.hasProject && !azureDevOps.denied.vso_work_write",
+          "group": "navigation@1"
+        },
+        {
+          "command": "azureDevOps.workItems.createLocked",
+          "when": "view == azureDevOps.workItems && azureDevOps.hasProject && azureDevOps.denied.vso_work_write",
+          "group": "navigation@1"
+        },
+        {
+          "command": "azureDevOps.workItems.search",
+          "when": "view == azureDevOps.workItems && azureDevOps.hasProject",
+          "group": "navigation@2"
+        },
+        {
+          "command": "azureDevOps.workItems.refresh",
+          "when": "view == azureDevOps.workItems && azureDevOps.hasProject",
+          "group": "navigation@3"
+        },
+        {
+          "command": "azureDevOps.workItems.open",
+          "when": "view == azureDevOps.workItems && azureDevOps.hasProject",
+          "group": "1_open@1"
+        },
+        {
+          "command": "azureDevOps.selectTeam",
+          "when": "view == azureDevOps.workItems && azureDevOps.hasProject",
+          "group": "2_scope@1"
+        },
+        {
+          "command": "azureDevOps.selectProject",
+          "when": "view == azureDevOps.workItems && azureDevOps.signedIn",
+          "group": "2_scope@2"
+        },
+        {
+          "command": "azureDevOps.pullRequests.create",
+          "when": "view == azureDevOps.pullRequests && azureDevOps.hasProject && !azureDevOps.denied.vso_code_write",
+          "group": "navigation@1"
+        },
+        {
+          "command": "azureDevOps.pullRequests.createLocked",
+          "when": "view == azureDevOps.pullRequests && azureDevOps.hasProject && azureDevOps.denied.vso_code_write",
+          "group": "navigation@1"
+        },
+        {
+          "command": "azureDevOps.pullRequests.open",
+          "when": "view == azureDevOps.pullRequests && azureDevOps.hasProject",
+          "group": "navigation@2"
+        },
+        {
+          "command": "azureDevOps.pullRequests.refresh",
+          "when": "view == azureDevOps.pullRequests && azureDevOps.hasProject",
+          "group": "navigation@3"
+        },
+        {
+          "command": "azureDevOps.repos.clone",
+          "when": "view == azureDevOps.pullRequests && azureDevOps.hasProject",
+          "group": "1_repo@1"
+        },
+        {
+          "command": "azureDevOps.selectProject",
+          "when": "view == azureDevOps.pullRequests && azureDevOps.signedIn",
+          "group": "2_scope@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.run",
+          "when": "view == azureDevOps.pipelines && azureDevOps.hasProject && !azureDevOps.denied.vso_build_execute",
+          "group": "navigation@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.runLocked",
+          "when": "view == azureDevOps.pipelines && azureDevOps.hasProject && azureDevOps.denied.vso_build_execute",
+          "group": "navigation@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.refresh",
+          "when": "view == azureDevOps.pipelines && azureDevOps.hasProject",
+          "group": "navigation@2"
+        },
+        {
+          "command": "azureDevOps.selectProject",
+          "when": "view == azureDevOps.pipelines && azureDevOps.signedIn",
+          "group": "2_scope@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "azureDevOps.workItems.openInBrowser",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "inline@2"
+        },
+        {
+          "command": "azureDevOps.workItems.changeState",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.workItems.open",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "1_open@1"
+        },
+        {
+          "command": "azureDevOps.workItems.openInBrowser",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "1_open@2"
+        },
+        {
+          "command": "azureDevOps.workItems.changeState",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "azureDevOps.workItems.assignToMe",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "azureDevOps.workItems.assign",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "2_edit@3"
+        },
+        {
+          "command": "azureDevOps.workItems.addComment",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "2_edit@4"
+        },
+        {
+          "command": "azureDevOps.workItems.createChild",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "2_edit@5"
+        },
+        {
+          "command": "azureDevOps.workItems.createBranch",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "3_git@1"
+        },
+        {
+          "command": "azureDevOps.workItems.copyLink",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "4_copy@1"
+        },
+        {
+          "command": "azureDevOps.workItems.copyAsMarkdown",
+          "when": "view == azureDevOps.workItems && viewItem == workItem",
+          "group": "4_copy@2"
+        },
+        {
+          "command": "azureDevOps.pullRequests.approve",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:active/",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.pullRequests.openInBrowser",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:/",
+          "group": "inline@2"
+        },
+        {
+          "command": "azureDevOps.pullRequests.open",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "azureDevOps.pullRequests.openInBrowser",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "azureDevOps.pullRequests.checkout",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:/",
+          "group": "2_git@1"
+        },
+        {
+          "command": "azureDevOps.pullRequests.approve",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:active/",
+          "group": "3_review@1"
+        },
+        {
+          "command": "azureDevOps.pullRequests.vote",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:active/",
+          "group": "3_review@2"
+        },
+        {
+          "command": "azureDevOps.pullRequests.copyLink",
+          "when": "view == azureDevOps.pullRequests && viewItem =~ /^pullRequest:/",
+          "group": "4_copy@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.run",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineDefinition && !azureDevOps.denied.vso_build_execute",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.runLocked",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineDefinition && azureDevOps.denied.vso_build_execute",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineDefinition",
+          "group": "inline@2"
+        },
+        {
+          "command": "azureDevOps.pipelines.run",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineDefinition",
+          "group": "1_run@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineDefinition",
+          "group": "2_open@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.cancel",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:(inProgress|notStarted|postponed)/",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.retry",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:completed:(failed|partiallySucceeded|canceled)/",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:/",
+          "group": "inline@2"
+        },
+        {
+          "command": "azureDevOps.pipelines.rerun",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:/",
+          "group": "1_run@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.run",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:/",
+          "group": "1_run@2"
+        },
+        {
+          "command": "azureDevOps.pipelines.retry",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:completed:(failed|partiallySucceeded|canceled)/",
+          "group": "1_run@3"
+        },
+        {
+          "command": "azureDevOps.pipelines.cancel",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:(inProgress|notStarted|postponed)/",
+          "group": "1_run@4"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^pipelineRun:/",
+          "group": "2_open@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.openLog",
+          "when": "view == azureDevOps.pipelines && viewItem == timelineRecord:log",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.openLog",
+          "when": "view == azureDevOps.pipelines && viewItem == timelineRecord:log",
+          "group": "1_open@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "view == azureDevOps.pipelines && viewItem =~ /^timelineRecord/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "azureDevOps.pipelines.approve",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineApproval",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.reject",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineApproval",
+          "group": "inline@2"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "view == azureDevOps.pipelines && viewItem == pipelineApproval",
+          "group": "1_open@1"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "view == azureDevOps.pipelines && viewItem == release",
+          "group": "inline@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "azureDevOps.workItems.createFromSelection",
+          "when": "azureDevOps.signedIn && editorHasSelection",
+          "group": "9_azureDevOps@1"
+        },
+        {
+          "command": "azureDevOps.repos.copyFileLink",
+          "when": "azureDevOps.signedIn && resourceScheme == file",
+          "group": "9_azureDevOps@2"
+        },
+        {
+          "command": "azureDevOps.repos.openFileInBrowser",
+          "when": "azureDevOps.signedIn && resourceScheme == file",
+          "group": "9_azureDevOps@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "azureDevOps.pullRequests.openFile",
+          "when": "resourceScheme == azdo-git",
+          "group": "navigation"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "azureDevOps.prComments.createThread",
+          "when": "commentController == azureDevOps.pullRequestComments && commentThreadIsEmpty",
+          "group": "inline"
+        },
+        {
+          "command": "azureDevOps.prComments.reply",
+          "when": "commentController == azureDevOps.pullRequestComments && !commentThreadIsEmpty",
+          "group": "inline"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "azureDevOps.prComments.resolve",
+          "when": "commentController == azureDevOps.pullRequestComments && commentThread == active",
+          "group": "inline"
+        },
+        {
+          "command": "azureDevOps.prComments.reactivate",
+          "when": "commentController == azureDevOps.pullRequestComments && commentThread == resolved",
+          "group": "inline"
+        }
+      ],
+      "comments/comment/title": [
+        {
+          "command": "azureDevOps.prComments.edit",
+          "when": "commentController == azureDevOps.pullRequestComments && comment == own",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.prComments.delete",
+          "when": "commentController == azureDevOps.pullRequestComments && comment == own",
+          "group": "inline@2"
+        }
+      ],
+      "comments/comment/context": [
+        {
+          "command": "azureDevOps.prComments.cancelEdit",
+          "when": "commentController == azureDevOps.pullRequestComments && comment == own",
+          "group": "inline@1"
+        },
+        {
+          "command": "azureDevOps.prComments.saveEdit",
+          "when": "commentController == azureDevOps.pullRequestComments && comment == own",
+          "group": "inline@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "azureDevOps.explainScope",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.explainFeature",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pullRequests.openFileDiff",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.createThread",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.reply",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.resolve",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.reactivate",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.edit",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.saveEdit",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.cancelEdit",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.prComments.delete",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.rerun",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.cancel",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.retry",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.openInBrowser",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.openLog",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.approve",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.reject",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.workItems.createLocked",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pullRequests.createLocked",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pipelines.runLocked",
+          "when": "false"
+        },
+        {
+          "command": "azureDevOps.pullRequests.openFile",
+          "when": "resourceScheme == azdo-git"
+        },
+        {
+          "command": "azureDevOps.signOut",
+          "when": "azureDevOps.signedIn"
+        },
+        {
+          "command": "azureDevOps.updatePat",
+          "when": "azureDevOps.signedIn"
+        },
+        {
+          "command": "azureDevOps.recheckAccess",
+          "when": "azureDevOps.signedIn"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Azure DevOps",
+      "properties": {
+        "azureDevOps.workItems.hiddenStates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "Closed",
+            "Done",
+            "Removed",
+            "Completed",
+            "Cut"
+          ],
+          "description": "Work item states hidden from the Assigned to Me, Created by Me and Current Iteration lists."
+        },
+        "azureDevOps.workItems.maxResults": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Maximum number of work items loaded per list."
+        },
+        "azureDevOps.workItems.assignNewToMe": {
+          "type": "boolean",
+          "default": true,
+          "description": "Assign newly created work items to yourself."
+        },
+        "azureDevOps.workItems.createInCurrentIteration": {
+          "type": "boolean",
+          "default": false,
+          "description": "Put newly created work items in the team's current iteration."
+        },
+        "azureDevOps.workItems.branchNameTemplate": {
+          "type": "string",
+          "default": "feature/${id}-${title}",
+          "markdownDescription": "Template for **Create Branch for Work Item**. Supports `${id}`, `${title}` (slugified) and `${type}`."
+        },
+        "azureDevOps.pullRequests.defaultMergeStrategy": {
+          "type": "string",
+          "enum": [
+            "squash",
+            "noFastForward",
+            "rebase",
+            "rebaseMerge"
+          ],
+          "default": "squash",
+          "enumDescriptions": [
+            "Squash commit",
+            "Merge (no fast-forward)",
+            "Rebase and fast-forward",
+            "Semi-linear merge"
+          ],
+          "description": "Merge type suggested when completing a pull request."
+        },
+        "azureDevOps.pullRequests.deleteSourceBranch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest deleting the source branch when completing a pull request."
+        },
+        "azureDevOps.pullRequests.transitionWorkItems": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest completing linked work items when completing a pull request."
+        },
+        "azureDevOps.pipelines.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 15,
+          "minimum": 0,
+          "description": "How often running pipelines refresh in the Pipelines view (0 disables auto-refresh)."
+        },
+        "azureDevOps.pipelines.showLogTimestamps": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the timestamp at the start of every pipeline log line."
+        },
+        "azureDevOps.repos.cloneProtocol": {
+          "type": "string",
+          "enum": [
+            "https",
+            "ssh"
+          ],
+          "default": "https",
+          "description": "Remote URL used by Clone Repository."
+        },
+        "azureDevOps.server.apiVersion": {
+          "type": "string",
+          "default": "7.0",
+          "markdownDescription": "REST API version used with **Azure DevOps Server** (on-premises). Use `6.0` for Azure DevOps Server 2020. Azure DevOps Services always uses 7.1."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "azure-pipelines-log",
+        "aliases": [
+          "Azure Pipelines Log"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "azure-pipelines-log",
+        "scopeName": "text.log.azure-pipelines",
+        "path": "./syntaxes/azure-pipelines-log.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:production": "node scripts/build.mjs --production",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc -p .",
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "vscode:prepublish": "npm run build:production",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/markdown-it": "^14.2.0",
+    "@types/node": "^22.20.5",
+    "@types/vscode": "^1.90.0",
+    "@vscode/codicons": "^0.0.36",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.13.0",
+    "happy-dom": "^21.0.3",
+    "markdown-it": "^15.0.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  }
+}
